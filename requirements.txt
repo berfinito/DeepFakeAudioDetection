@@ -1,0 +1,9 @@
+torch
+torchaudio
+transformers
+openai-whisper
+tqdm
+scikit-learn
+matplotlib
+seaborn
+soundfile
