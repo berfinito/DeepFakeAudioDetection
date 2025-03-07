@@ -12,8 +12,10 @@ pip install -r requirements.txt
 
 ## Handling Large Files (Git LFS)
 
-As the model weights file is **large (144MB)**, it is stored using **Git LFS (Large File Storage)**.  
-To ensure you download this file correctly, follow one of these methods:
+The model weights file is **large (144MB)**, so it is stored using **Git LFS (Large File Storage)**.
+
+By default, **Git LFS should automatically download large files** when you clone the repository.  
+However, if the file **did not download** or appears **smaller than expected**, follow one of these methods:
 
 ### **Option 1: Download from Google Drive**
 You can manually download the model weights from **[Google Drive](https://drive.google.com/file/d/13OUJ9D5oG3K4ci_CZpMWbLja5yApgWg0/view)** and place it inside the `whisper/` folder.
