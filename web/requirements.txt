@@ -1,3 +1,5 @@
 gradio
-torchaudio
 torch
+torchaudio
+transformers
+openai-whisper

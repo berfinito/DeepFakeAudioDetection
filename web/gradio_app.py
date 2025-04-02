@@ -3,14 +3,17 @@ import gradio as gr
 import sys
 
 # Add the whisper folder to path so we can import from it
-sys.path.append(os.path.join(os.path.dirname(__file__), "..", "whisper"))
+LOCAL_WHISPER_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "whisper"))
+SPACES_WHISPER_DIR = "/home/user/whisper"
+sys.path.append(LOCAL_WHISPER_DIR)
+allowed_paths = [LOCAL_WHISPER_DIR, SPACES_WHISPER_DIR]
 
 # Import infer from inference.py
 from inference import infer
 
 # Paths to test samples
-REAL_SAMPLE = os.path.join("..", "whisper", "test_audio_real.mp3")
-FAKE_SAMPLE = os.path.join("..", "whisper", "test_audio_fake.wav")
+REAL_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_real.mp3")
+FAKE_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_fake.wav")
 
 # Inference
 def predict(audio_path):
@@ -68,4 +71,4 @@ with gr.Blocks() as detector:
     """)
 
 if __name__ == "__main__":
-    detector.launch(allowed_paths=["../whisper"])
+    detector.launch(allowed_paths=allowed_paths)

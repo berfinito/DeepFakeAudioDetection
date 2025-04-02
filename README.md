@@ -1,5 +1,9 @@
 # Deepfake Audio Detection
 
+## Website
+
+You can test the model directly in the [Hugging Face Space](https://huggingface.co/spaces/refikbklm/fake-audio-detector).
+
 ## Dependencies
 Run the following commands to install the necessary dependencies:
 
