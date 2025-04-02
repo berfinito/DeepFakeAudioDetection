@@ -13,10 +13,21 @@ from sklearn.metrics import precision_recall_curve, confusion_matrix, classifica
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
+from safetensors.torch import save_file, load_file
 
 # Optimize CUDA performance by disabling benchmarking (as dataset has different audio lengths) and clearing cache
 torch.backends.cudnn.benchmark = False  
 torch.cuda.empty_cache()
+torch.cuda.set_per_process_memory_fraction(0.95)
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+def save_model_fp16(model, path):
+    state_dict = model.state_dict()
+    state_dict_half = {
+        k: (v.half() if v.dtype == torch.float32 else v)
+        for k, v in state_dict.items()
+    }
+    save_file(state_dict_half, path)
 
 def load_wave(wave_path, sample_rate:int=16000) -> torch.Tensor:
     """
@@ -31,11 +42,12 @@ class AudioDataset(Dataset):
     """
     Custom PyTorch dataset for loading and processing audio samples.
     """
-    def __init__(self, audio_info_list, labels, sample_rate) -> None:
+    def __init__(self, audio_info_list, labels, sample_rate, n_mels=80) -> None:
         super().__init__()
         self.audio_info_list = audio_info_list
         self.sample_rate = sample_rate
         self.labels = labels
+        self.n_mels = n_mels
 
     def __len__(self):
         return len(self.audio_info_list)
@@ -50,7 +62,7 @@ class AudioDataset(Dataset):
         # Load and preprocess audio
         audio = load_wave(audio_path, sample_rate=self.sample_rate)
         audio = whisper.pad_or_trim(audio.flatten()) # Ensure consistent input length
-        mel = whisper.log_mel_spectrogram(audio)  # Convert audio to Mel spectrogram
+        mel = whisper.log_mel_spectrogram(audio, n_mels=self.n_mels)
 
         return {
             "input_ids": mel,
@@ -134,8 +146,9 @@ def evaluate(model, eval_loader, criterion, device):
             features = batch["input_ids"].to(device, non_blocking=True)
             labels = batch["labels"].to(device, non_blocking=True)
 
-            outputs = model(features)
-            loss = criterion(outputs, labels)
+            with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
+                outputs = model(features)
+                loss = criterion(outputs, labels)
             preds = torch.argmax(outputs, dim=1)
 
             total_loss += loss.item()
@@ -200,7 +213,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     # Prepare dataset and DataLoaders
-    dataset = AudioDataset(file_paths, labels=labels, sample_rate=16000)
+    dataset = AudioDataset(file_paths, labels=labels, sample_rate=16000, n_mels=80)
     torch.manual_seed(42) # Set seed to get same split everytime
     dataset_size = len(dataset)
     train_size = int(0.8 * dataset_size)
@@ -219,14 +232,27 @@ if __name__ == "__main__":
     early_stop_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, min_lr=1e-6)
     scaler = torch.amp.GradScaler(device="cuda")
 
+    start_epoch = 1
+    resume_path = "model_epoch_1_fp16.safetensors" # Choose the checkpoint you want to resume
+    if os.path.exists(resume_path):
+        print("Loading model weights from safetensors...")
+        raw_state = load_file(resume_path)
+        model.load_state_dict(raw_state, strict=True)
+        start_epoch = int(resume_path.split("_epoch_")[1].split("_")[0]) + 1
+        print(f"Resuming training from epoch {start_epoch}")
+        torch.cuda.empty_cache()
+
     if run_training:
         # Training loop
         num_epochs = 15
-        for epoch in range(1, num_epochs + 1):
+        for epoch in range(start_epoch, num_epochs + 1):
             print(f"Epoch {epoch}/{num_epochs}")
+
             train_loss, train_acc = train(model, train_loader, criterion, optimizer, device, scaler)
             scheduler.step()
             print(f"Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
+            
+            save_model_fp16(model, f"model_epoch_{epoch}_fp16.safetensors") # Save checkpoint after each epoch
 
         print("Training Complete! Saving model.")
         torch.save(model.state_dict(), "whisper_deepfake_model.pth")
