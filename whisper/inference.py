@@ -4,6 +4,9 @@ import torchaudio
 import torchaudio.transforms as at
 from transformers import WhisperModel
 import torch.nn as nn
+import os
+
+SKIP_MODEL_LOADING = False # Flag for testing purposes
 
 # Same class with training
 class WhisperDeepFakeClassifier(nn.Module):
@@ -43,11 +46,19 @@ def preprocess_audio(audio_path, sample_rate=16000):
 # Load model and set to evaluation mode
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = WhisperDeepFakeClassifier().to(device)
-model.load_state_dict(torch.load("whisper_deepfake_model.pth", map_location=device))
-model.eval()
+if not SKIP_MODEL_LOADING:
+    model_path = os.path.join(os.path.dirname(__file__), "whisper_deepfake_model.pth")
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+else:
+    print("⚠️ SKIPPING model loading (dev mode)")
 
 # Run inference on an audio file
 def infer(audio_path):
+    if SKIP_MODEL_LOADING:
+        print(f"[DEV MODE] Stub prediction for: {audio_path}")
+        return "Real (stubbed)"
+    
     input_features = preprocess_audio(audio_path).to(device)
     with torch.no_grad():
         output = model(input_features)
@@ -57,7 +68,8 @@ def infer(audio_path):
     print(f"File: {audio_path}, Prediction: {label_map[predicted_label]}")
     return label_map[predicted_label]
 
-audio_file1 = "test_audio_real.mp3"
-audio_file2 = "test_audio_fake.wav"
-infer(audio_file1)
-infer(audio_file2)
+if __name__ == "__main__":
+    audio_file1 = "test_audio_real.mp3"
+    audio_file2 = "test_audio_fake.wav"
+    infer(audio_file1)
+    infer(audio_file2)
