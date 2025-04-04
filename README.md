@@ -1,43 +1,53 @@
 # Deepfake Audio Detection
 
+## Website
+
+You can test the model directly in the [Hugging Face Space](https://huggingface.co/spaces/refikbklm/fake-audio-detector).
+
 ## Dependencies
 Run the following commands to install the necessary dependencies:
 
-```
+```bash
 pip install git+https://github.com/openai/whisper.git
 ```
-```
+```bash
 pip install -r requirements.txt
 ```
 
-## Handling Large Files (Git LFS)
+## Model Weights for Inference
 
-The model weights file is **large (144MB)**, so it is stored using **Git LFS (Large File Storage)**.
+The model weights file is **large (3GB)**, so it is stored using **Git LFS (Large File Storage)**.
 
-By default, **Git LFS should automatically download large files** when you clone the repository.  
-However, if the file **did not download** or appears **smaller than expected**, follow one of these methods:
+### How it's handled:
 
-### **Option 1: Download from Google Drive**
-You can manually download the model weights from **[Google Drive](https://drive.google.com/file/d/13OUJ9D5oG3K4ci_CZpMWbLja5yApgWg0/view)** and place it inside the `whisper/` folder.
+- If you have **Git LFS installed**, the model file (`whisper_deepfake_model.pth`) will likely be **downloaded automatically** when you clone the repository.
+- If you **don’t have Git LFS**, the file will appear as a small pointer text file — and the code will **automatically download the full model from Hugging Face** when needed.
 
-### **Option 2: Get It Using Git LFS**
+So in most cases, **you don’t need to do anything manually**.
+
+If you still prefer to download the model manually, you can use one of these options:
+
+### 📥 **Option 1: Download from Google Drive**
+If you prefer, you can manually download the model weights from **[Google Drive](https://drive.google.com/file/d/13OUJ9D5oG3K4ci_CZpMWbLja5yApgWg0/view)** and place it in the same folder as `inference.py`
+
+### 💻 **Option 2: Get It Using Git LFS**
 If you prefer to fetch the model via Git LFS, follow these steps:
 
 1️⃣ **Install Git LFS** (**if not already installed**):
 
    - **Windows**: Download and install from [git-lfs.github.com](https://git-lfs.github.com/)  
    - **Mac (Homebrew)**:  
-     ```
+     ```bash
      brew install git-lfs
      ```
    - **Linux**:  
-     ```
+     ```bash
      sudo apt install git-lfs  # Debian/Ubuntu
      sudo dnf install git-lfs  # Fedora
      ```
 
 2️⃣ **After cloning the repository, run:**
-   ```
+   ```bash
    git lfs install
    git lfs pull
    ```
@@ -69,7 +79,7 @@ audio_dataset/
 Before training, **adjust `batch_size` and `num_workers`** in the `DataLoaders` inside `train_eval.py` to match your system's specifications.  
 
 Then, start the training process by running:
-```
+```bash
 py train_eval.py
 ```
 This will **train the model, save the trained weights, and evaluate its performance**.
@@ -77,18 +87,18 @@ This will **train the model, save the trained weights, and evaluate its performa
 ---
 
 ### **Inference**
-To run inference, ensure that the **script, model weights (`.pth`), and test audio files** are all in the same folder:
+To run inference, make sure the following are in the **same directory**:
 
 ```
 ./
 │── inference.py
-│── whisper_deepfake_model.pth
+│── whisper_deepfake_model.pth  # will be auto-downloaded if missing
 │── test_audio_real.mp3
 │── test_audio_fake.wav
 ```
 
-Run the following command:
-```
+Then run the following command:
+```bash
 py inference.py
 ```
 This will **process the test files and print their predicted labels**.
