@@ -8,3 +8,4 @@ matplotlib
 seaborn
 soundfile
 safetensors
+huggingface_hub

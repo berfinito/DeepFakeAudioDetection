@@ -21,16 +21,22 @@ def predict(audio_path):
         return "<span style='color:red;'>Please upload or select an audio file.</span>"
 
     filename = os.path.basename(audio_path)
-    result = infer(audio_path)
-    color = "#4CAF50" if "real" in result.lower() else "#FF4C4C"  # Green or Red
+    label, confidence = infer(audio_path)
+    color = "#4CAF50" if "real" in label.lower() else "#FF4C4C"  # Green or Red
     
-    return f"<span style='color:{color}; font-size: 1.2rem; font-weight: bold;'>Prediction for <code>{filename}</code>: {result}</span>"
+    return (
+        f"<div style='min-height: 60px;'>"
+        f"<span style='color:{color}; font-size: 1.2rem; font-weight: bold;'>"
+        f"Prediction for <code>{filename}</code>: {label} ({confidence * 100:.2f}%)"
+        f"</span>"
+        f"</div>"
+    )
 
 def set_sample(path):
     return path
 
 def clear_all():
-    return None, ""
+    return None, "<i style='color:gray;'>Upload a file or choose a sample to begin.</i>"
 
 with gr.Blocks() as detector:
     gr.Markdown("# 🕵️‍♂️ Deep Fake Audio Detector")
@@ -50,7 +56,11 @@ with gr.Blocks() as detector:
         predict_btn = gr.Button("🧠 Predict", variant="primary")
         clear_btn = gr.Button("🧼 Clear", elem_classes=["custom-clear"])
 
-    result_box = gr.HTML(label="Prediction")
+    result_box = gr.HTML(
+        value="<i style='color:gray;'>Upload a file or choose a sample to begin.</i>",
+        label="Prediction",
+        elem_classes=["result-display"]
+    )
 
     # Set sample into upload_box
     real_btn.click(fn=set_sample, inputs=[real_path], outputs=[upload_box])
@@ -62,6 +72,10 @@ with gr.Blocks() as detector:
 
     gr.HTML("""
     <style>
+        .result-display {
+            min-height: 60px;
+            overflow: hidden;
+        }
         .custom-clear {
             background-color: #f5f5f5 !important;
             color: black !important;
