@@ -5,12 +5,17 @@ import torchaudio.transforms as at
 from transformers import WhisperModel
 import torch.nn as nn
 import os
+from huggingface_hub import hf_hub_download
+import torch.nn.functional as F
 
 SKIP_MODEL_LOADING = False # Flag for testing purposes
 
+MODEL_FILENAME = "whisper_deepfake_model.pth"
+MODEL_LOCAL_PATH = os.path.join(os.path.dirname(__file__), MODEL_FILENAME)
+
 # Same class with training
 class WhisperDeepFakeClassifier(nn.Module):
-    def __init__(self, model_name="openai/whisper-tiny", num_classes=2):
+    def __init__(self, model_name="openai/whisper-medium", num_classes=2):
         super().__init__()
         self.whisper = WhisperModel.from_pretrained(model_name)
         self.encoder = self.whisper.encoder
@@ -43,15 +48,30 @@ def preprocess_audio(audio_path, sample_rate=16000):
     mel = whisper.log_mel_spectrogram(audio)  # Convert to Mel spectrogram
     return mel.unsqueeze(0)  # Add batch dimension
 
-# Load model and set to evaluation mode
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = WhisperDeepFakeClassifier().to(device)
-if not SKIP_MODEL_LOADING:
-    model_path = os.path.join(os.path.dirname(__file__), "whisper_deepfake_model.pth")
-    model.load_state_dict(torch.load(model_path, map_location=device))
+# Function to load model and set it to evaluation mode
+def load_model():
+    model = WhisperDeepFakeClassifier().to(device)
+
+    if SKIP_MODEL_LOADING:
+        print("Skipping model loading.")
+        return model
+
+    if not os.path.exists(MODEL_LOCAL_PATH):
+        print("Local model not found. Downloading from Hugging Face Model Hub...")
+        downloaded_path = hf_hub_download(
+            repo_id="refikbklm/fake-audio-detector-model",
+            filename=MODEL_FILENAME
+        )
+        torch.save(torch.load(downloaded_path, map_location=device), MODEL_LOCAL_PATH)
+
+    print(f"Loading model from {MODEL_LOCAL_PATH}...")
+    model.load_state_dict(torch.load(MODEL_LOCAL_PATH, map_location=device))
     model.eval()
-else:
-    print("⚠️ SKIPPING model loading (dev mode)")
+    return model
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = load_model()
 
 # Run inference on an audio file
 def infer(audio_path):
@@ -62,11 +82,14 @@ def infer(audio_path):
     input_features = preprocess_audio(audio_path).to(device)
     with torch.no_grad():
         output = model(input_features)
-        predicted_label = torch.argmax(output, dim=1).item()
-    
+        probs = F.softmax(output, dim=1)
+        predicted_label = torch.argmax(probs, dim=1).item()
+        confidence = probs[0, predicted_label].item()
+
     label_map = {0: "Real", 1: "Fake"}
-    print(f"File: {audio_path}, Prediction: {label_map[predicted_label]}")
-    return label_map[predicted_label]
+    label = label_map[predicted_label]
+    print(f"File: {audio_path}, Prediction: {label} ({confidence * 100:.2f}%)")
+    return label, confidence
 
 if __name__ == "__main__":
     audio_file1 = "test_audio_real.mp3"

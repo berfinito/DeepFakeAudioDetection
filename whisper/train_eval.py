@@ -13,7 +13,7 @@ from sklearn.metrics import precision_recall_curve, confusion_matrix, classifica
 import matplotlib.pyplot as plt
 import seaborn as sns
 import multiprocessing
-from safetensors.torch import save_file, load_file
+from safetensors.torch import save_file, load_file, save_model
 
 # Optimize CUDA performance by disabling benchmarking (as dataset has different audio lengths) and clearing cache
 torch.backends.cudnn.benchmark = False  
@@ -73,7 +73,7 @@ class WhisperDeepFakeClassifier(nn.Module):
     """
     Neural network using Whisper encoder for deepfake audio classification.
     """
-    def __init__(self, model_name="openai/whisper-tiny", num_classes=2):
+    def __init__(self, model_name="openai/whisper-medium", num_classes=2):
         super().__init__()
         self.whisper = WhisperModel.from_pretrained(model_name)
         self.encoder = self.whisper.encoder # Use only the encoder for feature extraction
@@ -220,8 +220,8 @@ if __name__ == "__main__":
     eval_size = dataset_size - train_size
 
     train_dataset, eval_dataset = random_split(dataset, [train_size, eval_size], generator=torch.Generator().manual_seed(42))
-    train_loader = DataLoader(train_dataset, batch_size=448, shuffle=True, drop_last=True, num_workers=10, pin_memory=True, prefetch_factor=2, persistent_workers=True)
-    eval_loader = DataLoader(eval_dataset, batch_size=384, shuffle=False, drop_last=True, num_workers=6, pin_memory=True, prefetch_factor=2)
+    train_loader = DataLoader(train_dataset, batch_size=176, shuffle=True, drop_last=True, num_workers=6, pin_memory=True, prefetch_factor=2, persistent_workers = True)
+    eval_loader = DataLoader(eval_dataset, batch_size=128, shuffle=False, drop_last=True, num_workers=4, pin_memory=False, prefetch_factor=2, persistent_workers = True)
 
     model = WhisperDeepFakeClassifier().to(device)
     print(f"Model is running on: {next(model.parameters()).device}")
@@ -233,7 +233,7 @@ if __name__ == "__main__":
     scaler = torch.amp.GradScaler(device="cuda")
 
     start_epoch = 1
-    resume_path = "model_epoch_1_fp16.safetensors" # Choose the checkpoint you want to resume
+    resume_path = "model_epoch_1_fp16.safetensors" # Change the name to the checkpoint you will resume from
     if os.path.exists(resume_path):
         print("Loading model weights from safetensors...")
         raw_state = load_file(resume_path)
@@ -252,7 +252,7 @@ if __name__ == "__main__":
             scheduler.step()
             print(f"Train Loss: {train_loss:.4f}, Accuracy: {train_acc:.4f}")
             
-            save_model_fp16(model, f"model_epoch_{epoch}_fp16.safetensors") # Save checkpoint after each epoch
+            save_model_fp16(model, f"model_epoch_{epoch}_fp16.safetensors")
 
         print("Training Complete! Saving model.")
         torch.save(model.state_dict(), "whisper_deepfake_model.pth")
