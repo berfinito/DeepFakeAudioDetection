@@ -16,51 +16,30 @@ pip install -r requirements.txt
 
 ## Model Weights for Inference
 
-The model weights file is **large (3GB)**, so it is stored using **Git LFS (Large File Storage)**.
+The model weights file is **large (1GB)**, so it is stored using **Git LFS (Large File Storage)**.
 
-### How it's handled:
+### Download Options:
 
-- If you have **Git LFS installed**, the model file (`whisper_deepfake_model.pth`) will likely be **downloaded automatically** when you clone the repository.
-- If you **don’t have Git LFS**, the file will appear as a small pointer text file — and the code will **automatically download the full model from Hugging Face** when needed.
+### 🔹 Automatic Download
+If `whisper_deepfake_model.pth` is missing, the script will attempt to download it from Hugging Face.
 
-So in most cases, **you don’t need to do anything manually**.
+### 🔹 Manual Download
+You can also [download it manually](https://drive.google.com/file/d/1HXai8S5tKczl6Z9uXynQqekpSrrQrxrL/view?usp=sharing) and place it in:
 
-If you still prefer to download the model manually, you can use one of these options:
+```
+inference_scripts/models/whisper_deepfake_model.pth
+```
 
-### 📥 **Option 1: Download from Google Drive**
-If you prefer, you can manually download the model weights from **[Google Drive](https://drive.google.com/file/d/13OUJ9D5oG3K4ci_CZpMWbLja5yApgWg0/view)** and place it in the same folder as `inference.py`
+### 🔹 Git LFS Alternative
+```bash
+git lfs install
+git lfs pull
+```
 
-### 💻 **Option 2: Get It Using Git LFS**
-If you prefer to fetch the model via Git LFS, follow these steps:
-
-1️⃣ **Install Git LFS** (**if not already installed**):
-
-   - **Windows**: Download and install from [git-lfs.github.com](https://git-lfs.github.com/)  
-   - **Mac (Homebrew)**:  
-     ```bash
-     brew install git-lfs
-     ```
-   - **Linux**:  
-     ```bash
-     sudo apt install git-lfs  # Debian/Ubuntu
-     sudo dnf install git-lfs  # Fedora
-     ```
-
-2️⃣ **After cloning the repository, run:**
-   ```bash
-   git lfs install
-   git lfs pull
-   ```
-
-This will **download all LFS-tracked files**, including `whisper_deepfake_model.pth`.
-
----
-
-## Whisper Model
+## Whisper Model Training and Inference
 
 ### **Dataset Format for Training**
-To train the model, ensure your `audio_dataset` folder (containing `fake/` and `real/` subfolders) is placed **next to** `train_eval.py`.  
-The dataset should be structured as follows:
+To train the model, ensure your dataset follows the format below and update the path as needed inside the training scripts.
 
 ```
 audio_dataset/
@@ -76,29 +55,35 @@ audio_dataset/
 ```
 
 ### **Training & Evaluation**
-Before training, **adjust `batch_size` and `num_workers`** in the `DataLoaders` inside `train_eval.py` to match your system's specifications.  
+All training scripts are located in `training_scripts/`:
 
-Then, start the training process by running:
-```bash
-py train_eval.py
-```
-This will **train the model, save the trained weights, and evaluate its performance**.
+- `train_bnb.py` — 8-bit quantized training with `bitsandbytes`
+- `train_lora.py` — LoRA fine-tuning
+- `train_lora_and_bnb.py` — LoRA + 8-bit combined
+- `train_custom_classifier.py` — Custom classification head only
 
 ---
 
 ### **Inference**
-To run inference, make sure the following are in the **same directory**:
+Choose one of the following scripts under `inference_scripts/`:
 
-```
-./
-│── inference.py
-│── whisper_deepfake_model.pth  # will be auto-downloaded if missing
-│── test_audio_real.mp3
-│── test_audio_fake.wav
-```
+### 1. `inference_from_pth.py`  
+Full-precision model inference using a `.pth` file.  
+Requires `whisper_deepfake_model.pth` in the `models/` folder.  
+The script will automatically download it if not found.
 
-Then run the following command:
 ```bash
-py inference.py
+cd inference_scripts
+python inference_from_pth.py
 ```
-This will **process the test files and print their predicted labels**.
+
+### 2. `inference_from_tensor.py`  
+Lightweight 8-bit inference using `safetensors`.  
+Looks for a quantized model inside the `models/` directory.
+
+```bash
+cd inference_scripts
+python inference_from_tensor.py
+```
+
+> Place your `.wav`, `.mp3`, or `.flac` files in `test_audios/` before running inference.

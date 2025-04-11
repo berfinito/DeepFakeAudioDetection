@@ -9,3 +9,8 @@ seaborn
 soundfile
 safetensors
 huggingface_hub
+librosa
+datasets
+peft
+accelerate
+bitsandbytes
