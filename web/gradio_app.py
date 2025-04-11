@@ -12,8 +12,8 @@ allowed_paths = [LOCAL_WHISPER_DIR, SPACES_WHISPER_DIR]
 from inference import infer
 
 # Paths to test samples
-REAL_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_real.mp3")
-FAKE_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_fake.wav")
+REAL_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_real.flac")
+FAKE_SAMPLE = os.path.join(LOCAL_WHISPER_DIR, "test_audio_spoofed.flac")
 
 # Inference
 def predict(audio_path):
